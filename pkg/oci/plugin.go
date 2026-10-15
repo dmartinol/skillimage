@@ -22,6 +22,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 
 	"github.com/redhat-et/skillimage/pkg/agentplugin"
+	"github.com/redhat-et/skillimage/pkg/lifecycle"
 )
 
 const (
@@ -287,6 +288,7 @@ func pluginAnnotations(info *agentplugin.Info) (map[string]string, error) {
 		ocispec.AnnotationCreated:  time.Now().UTC().Format(time.RFC3339),
 		AnnotationPluginType:       PluginType,
 		AnnotationPluginSchema:     info.Manifest.Schema,
+		lifecycle.StatusAnnotation: string(lifecycle.Draft),
 		AnnotationPluginSkills:     marshalNames(info.Skills),
 		AnnotationPluginMCP:        marshalNames(info.MCPServers),
 		AnnotationPluginExtensions: marshalNames(info.Extensions),

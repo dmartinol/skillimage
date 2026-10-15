@@ -97,6 +97,7 @@ type InspectResult struct {
 	MediaType       string
 	ConfigMediaType string
 	LayerMediaType  string
+	ArtifactType    string
 	Size            int64
 	LayerCount      int
 	Plugin          *PluginInspectResult

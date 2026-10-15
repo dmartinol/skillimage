@@ -75,6 +75,7 @@ func inspect(ctx context.Context, store inspectableStore, ref string) (*InspectR
 			MediaType:       plugin.MediaType,
 			ConfigMediaType: manifest.Config.MediaType,
 			LayerMediaType:  plugin.LayerType,
+			ArtifactType:    manifest.ArtifactType,
 			Size:            plugin.Size,
 			LayerCount:      plugin.LayerCount,
 			Plugin:          plugin,
@@ -120,6 +121,7 @@ func inspect(ctx context.Context, store inspectableStore, ref string) (*InspectR
 		MediaType:       desc.MediaType,
 		ConfigMediaType: manifest.Config.MediaType,
 		LayerMediaType:  layerMediaType,
+		ArtifactType:    manifest.ArtifactType,
 		Size:            totalSize,
 		LayerCount:      len(manifest.Layers),
 	}, nil

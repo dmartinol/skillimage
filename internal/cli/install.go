@@ -93,12 +93,8 @@ func runInstall(cmd *cobra.Command, ref string, target string, outputDir string)
 		}
 	}
 
-	inspected, err := client.Inspect(ctx, ref)
-	if err != nil {
-		return fmt.Errorf("inspecting %s: %w", ref, err)
-	}
-	if inspected.Plugin != nil {
-		return fmt.Errorf("skillctl install does not support Agent Plugin packages; use skillctl pull -o <directory> to unpack the package")
+	if err := requireSkillImage(ctx, client, ref, "skillctl install"); err != nil {
+		return err
 	}
 
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {

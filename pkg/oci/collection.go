@@ -21,8 +21,8 @@ import (
 
 // OCI artifact and media types for skill collections.
 const (
-	CollectionArtifactType = "application/vnd.skillimage.collection.v1+yaml"
-	CollectionMediaType    = "application/vnd.skillimage.collection.v1+yaml"
+	CollectionArtifactType   = "application/vnd.skillimage.collection.v1+yaml"
+	CollectionMediaType      = "application/vnd.skillimage.collection.v1+yaml"
 	AnnotationCollectionName = "io.skillimage.collection.name"
 )
 
@@ -101,14 +101,29 @@ func (c *Client) PullCollection(ctx context.Context, ref string, opts PullOption
 		return nil, err
 	}
 
-	// Pull skills sequentially to limit concurrent network/disk I/O.
+	// Pull and classify all referenced packages before unpacking any skills.
+	// A collection entry that points to an Agent Plugin must not be extracted
+	// into the skill directory layout.
+	for _, skill := range col.Skills {
+		if _, err := c.Pull(ctx, skill.Image, PullOptions{SkipTLSVerify: opts.SkipTLSVerify}); err != nil {
+			return nil, fmt.Errorf("pulling skill %s: %w", skill.Name, err)
+		}
+		image, err := c.Inspect(ctx, skill.Image)
+		if err != nil {
+			return nil, fmt.Errorf("inspecting skill %s: %w", skill.Name, err)
+		}
+		if image.Plugin != nil {
+			return nil, fmt.Errorf("collection skill %q references an Agent Plugin; collection entries must be skill images", skill.Name)
+		}
+		if image.ArtifactType != "" {
+			return nil, fmt.Errorf("collection skill %q references OCI artifact %q; collection entries must be skill images", skill.Name, image.ArtifactType)
+		}
+	}
+
 	if opts.OutputDir != "" {
 		for _, skill := range col.Skills {
-			if _, err := c.Pull(ctx, skill.Image, PullOptions{
-				OutputDir:     opts.OutputDir,
-				SkipTLSVerify: opts.SkipTLSVerify,
-			}); err != nil {
-				return nil, fmt.Errorf("pulling skill %s: %w", skill.Name, err)
+			if err := c.Unpack(ctx, skill.Image, opts.OutputDir); err != nil {
+				return nil, fmt.Errorf("unpacking skill %s: %w", skill.Name, err)
 			}
 		}
 	}
@@ -139,6 +154,9 @@ func (c *Client) extractCollectionYAML(ctx context.Context, ref string) (*collec
 	}
 
 	if manifest.ArtifactType != CollectionArtifactType {
+		if manifest.Annotations[AnnotationPluginType] == PluginType {
+			return nil, fmt.Errorf("ref %s is an Agent Plugin image, not a collection artifact", ref)
+		}
 		return nil, fmt.Errorf("ref %s is not a collection artifact (artifactType=%s)", ref, manifest.ArtifactType)
 	}
 

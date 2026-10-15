@@ -32,7 +32,7 @@ func looksLocal(ref string) bool {
 
 func runPull(cmd *cobra.Command, ref string, outputDir string, skipTLSVerify bool) error {
 	if looksLocal(ref) {
-		return fmt.Errorf("%s looks like a local reference, not a remote registry\n\nTo install from the local store, use:\n  skillctl install %s --target <agent>\n  skillctl install %s -o <directory>", ref, ref, ref)
+		return fmt.Errorf("%s looks like a local reference, not a remote registry\n\nFor a skill image in the local store, use:\n  skillctl install %s --target <agent>\n  skillctl install %s -o <directory>\n\n`skillctl install` does not install Agent Plugin packages", ref, ref, ref)
 	}
 
 	client, err := defaultClient()
