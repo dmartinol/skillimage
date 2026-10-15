@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -13,23 +12,16 @@ func newPullCmd() *cobra.Command {
 	var outputDir string
 	var tlsVerify bool
 	cmd := &cobra.Command{
-		Use:   "pull <ref>",
-		Short: "Pull a skill image from a remote registry",
-		Long: `Pull a skill image from an OCI registry to the local store.
-
-Use -o to unpack skill files to a directory. If -o points to an
-existing directory, a subdirectory named after the skill is created
-automatically.
-
-Examples:
-  skillctl pull quay.io/acme/hr-onboarding:1.0.0
-  skillctl pull quay.io/acme/hr-onboarding:1.0.0 -o ./skills/`,
-		Args: cobra.ExactArgs(1),
+		Use:     "pull <ref>",
+		Short:   "Pull a skill or Agent Plugin image from a remote registry",
+		Long:    "Pull a skill or Agent Plugin image from an OCI registry to the local store. Use -o to unpack it using the package's format under the output directory.",
+		Example: "  skillctl pull quay.io/acme/hr-onboarding:1.0.0 -o ./packages/",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPull(cmd, args[0], outputDir, !tlsVerify)
 		},
 	}
-	cmd.Flags().StringVarP(&outputDir, "output", "o", "", "unpack skill files to directory")
+	cmd.Flags().StringVarP(&outputDir, "output", "o", "", "unpack the package under this directory")
 	cmd.Flags().BoolVar(&tlsVerify, "tls-verify", true, "require HTTPS and verify certificates")
 	return cmd
 }
@@ -48,7 +40,7 @@ func runPull(cmd *cobra.Command, ref string, outputDir string, skipTLSVerify boo
 		return err
 	}
 
-	desc, err := client.Pull(context.Background(), ref, oci.PullOptions{
+	desc, extractedPath, err := client.PullWithUnpack(cmd.Context(), ref, oci.PullOptions{
 		OutputDir:     outputDir,
 		SkipTLSVerify: skipTLSVerify,
 	})
@@ -57,8 +49,8 @@ func runPull(cmd *cobra.Command, ref string, outputDir string, skipTLSVerify boo
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Pulled %s\nDigest: %s\n", ref, desc.Digest)
-	if outputDir != "" {
-		fmt.Fprintf(cmd.OutOrStdout(), "Unpacked to %s\n", outputDir)
+	if extractedPath != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Unpacked to %s\n", extractedPath)
 	}
 	return nil
 }

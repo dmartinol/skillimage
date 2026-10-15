@@ -62,6 +62,7 @@ type LocalImage struct {
 	Digest  string
 	Status  string
 	Created string
+	Type    string
 }
 
 // PromoteOptions configures the Promote operation.
@@ -78,23 +79,24 @@ type InspectOptions struct {
 	SkipTLSVerify bool
 }
 
-// InspectResult holds detailed metadata for a skill image.
+// InspectResult holds detailed metadata for a skill or Agent Plugin image.
 type InspectResult struct {
-	Name          string
-	DisplayName   string
-	Version       string
-	Status        string
-	Description   string
-	Authors       string
-	License       string
-	Tags          string
-	Compatibility string
-	WordCount     string
-	Digest        string
-	Created       string
-	MediaType      string
+	Name            string
+	DisplayName     string
+	Version         string
+	Status          string
+	Description     string
+	Authors         string
+	License         string
+	Tags            string
+	Compatibility   string
+	WordCount       string
+	Digest          string
+	Created         string
+	MediaType       string
 	ConfigMediaType string
 	LayerMediaType  string
-	Size           int64
-	LayerCount     int
+	Size            int64
+	LayerCount      int
+	Plugin          *PluginInspectResult
 }
