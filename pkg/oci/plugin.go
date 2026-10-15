@@ -457,7 +457,7 @@ func extractPluginLayer(ctx context.Context, c *Client, layer ocispec.Descriptor
 			if err := os.MkdirAll(target, clampDirMode(header.Mode)); err != nil {
 				return fmt.Errorf("creating directory %s: %w", rel, err)
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return fmt.Errorf("creating parent directory for %s: %w", rel, err)
 			}

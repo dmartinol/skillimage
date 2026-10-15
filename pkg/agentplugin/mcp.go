@@ -230,11 +230,15 @@ func validHeaderName(name string) bool {
 		return false
 	}
 	for _, r := range name {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)) {
+		if !isHTTPTokenRune(r) {
 			return false
 		}
 	}
 	return true
+}
+
+func isHTTPTokenRune(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)
 }
 
 func validHeaderValue(value string) bool {

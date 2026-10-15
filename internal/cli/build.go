@@ -81,7 +81,7 @@ func runBuildPlugin(cmd *cobra.Command, dir, imageRef, tag, mediaType string) er
 		return err
 	}
 	if profile != oci.MediaTypeStandard {
-		return fmt.Errorf("Agent Plugin packages require standard OCI media types")
+		return fmt.Errorf("agent plugin packages require standard OCI media types")
 	}
 
 	info, err := agentplugin.ValidateDir(dir)

@@ -176,7 +176,7 @@ func parseManifest(data []byte) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("unsupported or missing $schema %q (supported: %s)", manifest.Schema, ManifestSchemaV1)
 	}
 	if !validPluginName(manifest.Name) {
-		return Manifest{}, fmt.Errorf("name must be 1-64 lowercase ASCII letters, digits, hyphens, or periods; begin and end with a letter or digit; and contain no -- or ..")
+		return Manifest{}, fmt.Errorf("name must be 1-64 lowercase ASCII letters, digits, hyphens, or periods, start and end with a letter or digit, and contain no consecutive hyphens or periods")
 	}
 	for _, key := range []string{"version", "description", "homepage", "repository", "license"} {
 		if raw, ok := fields[key]; ok && !isJSONType(raw, '"') {
@@ -302,12 +302,16 @@ func validPluginName(name string) bool {
 		return false
 	}
 	for i, r := range name {
-		valid := r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' || r == '.'
-		if !valid || (i == 0 || i == len(name)-1) && !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9') {
+		valid := isLowercaseASCIILetterOrDigit(r) || r == '-' || r == '.'
+		if !valid || (i == 0 || i == len(name)-1) && !isLowercaseASCIILetterOrDigit(r) {
 			return false
 		}
 	}
 	return !strings.Contains(name, "--") && !strings.Contains(name, "..")
+}
+
+func isLowercaseASCIILetterOrDigit(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= '0' && r <= '9'
 }
 
 func validExtensionNamespace(namespace string) bool {
@@ -320,7 +324,7 @@ func validExtensionNamespace(namespace string) bool {
 			return false
 		}
 		for _, r := range part {
-			if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+			if !isLowercaseASCIILetterOrDigit(r) && r != '-' {
 				return false
 			}
 		}
@@ -407,7 +411,7 @@ func validSkillName(name string) bool {
 		return false
 	}
 	for _, r := range name {
-		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+		if !isLowercaseASCIILetterOrDigit(r) && r != '-' {
 			return false
 		}
 	}
