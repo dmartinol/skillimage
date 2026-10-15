@@ -75,8 +75,8 @@ func ListRemoteTags(ctx context.Context, registryURL, repoName string, skipTLSVe
 }
 
 // FetchManifestAnnotations fetches a manifest from a remote registry
-// and returns its annotations and digest. Returns nil if the manifest
-// has no io.skillimage.status annotation (not a skill image).
+// and returns its annotations and digest. Returns nil for Agent Plugin
+// images and manifests without io.skillimage.status (not skill images).
 func FetchManifestAnnotations(ctx context.Context, registryURL, repoName, tag string, skipTLSVerify bool) (*SkillManifest, error) {
 	ref := fmt.Sprintf("%s/%s:%s", registryURL, repoName, tag)
 	repo, err := newRemoteRepository(ref, skipTLSVerify)
@@ -110,6 +110,9 @@ func FetchManifestAnnotations(ctx context.Context, registryURL, repoName, tag st
 	}
 
 	if manifest.Annotations == nil {
+		return nil, nil
+	}
+	if manifest.Annotations[AnnotationPluginType] == PluginType {
 		return nil, nil
 	}
 	if _, ok := manifest.Annotations[lifecycle.StatusAnnotation]; !ok {
