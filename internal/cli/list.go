@@ -79,10 +79,7 @@ func runList(cmd *cobra.Command, noTrunc bool, kind string) error {
 
 	var selected []oci.LocalImage
 	for _, img := range images {
-		imageKind := "skill"
-		if img.Type == oci.PluginType {
-			imageKind = "plugin"
-		}
+		imageKind := localImageKind(img)
 		if kind == "" || kind == imageKind {
 			selected = append(selected, img)
 		}
@@ -100,16 +97,26 @@ func runList(cmd *cobra.Command, noTrunc bool, kind string) error {
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "KIND\tNAME\tVERSION\tTAG\tSTATUS\tDIGEST\tCREATED")
 	for _, img := range selected {
-		imageKind := "skill"
-		if img.Type == oci.PluginType {
-			imageKind = "plugin"
-		}
+		imageKind := localImageKind(img)
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			imageKind, img.Name, img.Version, img.Tag, img.Status,
 			formatDigest(img.Digest, noTrunc),
 			formatCreated(img.Created, noTrunc))
 	}
 	return w.Flush()
+}
+
+func localImageKind(img oci.LocalImage) string {
+	if img.Type == oci.PluginType {
+		return "plugin"
+	}
+	if img.ArtifactType == oci.CollectionArtifactType {
+		return "collection"
+	}
+	if img.ArtifactType != "" {
+		return "artifact"
+	}
+	return "skill"
 }
 
 func runListInstalled(cmd *cobra.Command, target, outputDir string, upgradable bool) error {

@@ -56,7 +56,7 @@ func Resolve(ctx context.Context, input string, ref string, filter string) (*Res
 	}
 
 	pluginManifest := filepath.Join(cloneResult.Dir, "plugin.json")
-	if _, statErr := os.Stat(pluginManifest); statErr == nil {
+	if _, statErr := os.Lstat(pluginManifest); statErr == nil {
 		return &ResolveResult{
 			PluginDir: cloneResult.Dir,
 			Cleanup:   cloneResult.Cleanup,

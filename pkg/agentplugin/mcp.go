@@ -83,7 +83,11 @@ func validateMCPServer(raw json.RawMessage) error {
 			return fmt.Errorf("command must contain one executable token")
 		}
 		if strings.HasPrefix(command, "./") {
-			if err := validatePluginRelativePath(command[2:]); err != nil {
+			relativeCommand := command[2:]
+			if filepath.Clean(filepath.FromSlash(relativeCommand)) == "." {
+				return fmt.Errorf("command must name an executable inside the plugin root")
+			}
+			if err := validatePluginRelativePath(relativeCommand); err != nil {
 				return fmt.Errorf("command: %w", err)
 			}
 		} else if command == "." || command == ".." || strings.ContainsAny(command, "/\\") {

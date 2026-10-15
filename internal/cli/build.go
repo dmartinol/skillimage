@@ -101,6 +101,14 @@ func runBuildPlugin(cmd *cobra.Command, dir, imageRef, tag, mediaType string) er
 		if err != nil {
 			return err
 		}
+	} else if !strings.Contains(imageRef, "@") && !hasImageTag(imageRef) {
+		if info.Manifest.Version == "" {
+			return fmt.Errorf("plugin.json has no version; provide --tag or a tagged plugin-image-ref")
+		}
+		imageRef, err = withImageTag(imageRef, info.Manifest.Version)
+		if err != nil {
+			return err
+		}
 	}
 
 	client, err := defaultClient()
@@ -116,7 +124,7 @@ func runBuildPlugin(cmd *cobra.Command, dir, imageRef, tag, mediaType string) er
 }
 
 func hasPluginManifest(dir string) (bool, error) {
-	_, err := os.Stat(filepath.Join(dir, "plugin.json"))
+	_, err := os.Lstat(filepath.Join(dir, "plugin.json"))
 	if err == nil {
 		return true, nil
 	}
@@ -124,6 +132,10 @@ func hasPluginManifest(dir string) (bool, error) {
 		return false, nil
 	}
 	return false, fmt.Errorf("checking for plugin.json: %w", err)
+}
+
+func hasImageTag(ref string) bool {
+	return strings.LastIndex(ref, ":") > strings.LastIndex(ref, "/")
 }
 
 func withImageTag(ref, tag string) (string, error) {

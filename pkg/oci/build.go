@@ -188,13 +188,14 @@ func (c *Client) imageFromManifest(ctx context.Context, tag string, desc ocispec
 	_, tagPart := splitRefTag(tag)
 
 	return &LocalImage{
-		Name:    name,
-		Version: ann[ocispec.AnnotationVersion],
-		Tag:     tagPart,
-		Digest:  desc.Digest.String(),
-		Status:  ann[lifecycle.StatusAnnotation],
-		Created: ann[ocispec.AnnotationCreated],
-		Type:    ann[AnnotationPluginType],
+		Name:         name,
+		Version:      ann[ocispec.AnnotationVersion],
+		Tag:          tagPart,
+		Digest:       desc.Digest.String(),
+		Status:       ann[lifecycle.StatusAnnotation],
+		Created:      ann[ocispec.AnnotationCreated],
+		Type:         ann[AnnotationPluginType],
+		ArtifactType: manifest.ArtifactType,
 	}, nil
 }
 

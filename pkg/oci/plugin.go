@@ -510,19 +510,31 @@ func extractPluginLayer(ctx context.Context, c *Client, layer ocispec.Descriptor
 
 func pluginTarTarget(root, name string) (string, string, error) {
 	platformName := filepath.FromSlash(name)
-	if name == "" || strings.Contains(name, "\\") || path.IsAbs(name) || filepath.IsAbs(platformName) || filepath.VolumeName(platformName) != "" || path.Clean(name) != name || name == "." {
+	if name == "" || strings.ContainsAny(name, "\\\x00") || path.IsAbs(name) || filepath.IsAbs(platformName) || filepath.VolumeName(platformName) != "" {
 		return "", "", fmt.Errorf("unsafe tar entry path %q", name)
 	}
-	for _, part := range strings.Split(name, "/") {
-		if part == "" || part == "." || part == ".." {
+	normalized := name
+	for strings.HasPrefix(normalized, "./") {
+		normalized = strings.TrimPrefix(normalized, "./")
+	}
+	for _, part := range strings.Split(normalized, "/") {
+		if part == ".." {
 			return "", "", fmt.Errorf("unsafe tar entry path %q", name)
 		}
 	}
-	target := filepath.Join(root, filepath.FromSlash(name))
+	normalized = strings.TrimRight(normalized, "/")
+	if normalized == "" {
+		normalized = "."
+	}
+	clean := path.Clean(normalized)
+	if clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+		return "", "", fmt.Errorf("unsafe tar entry path %q", name)
+	}
+	target := filepath.Join(root, filepath.FromSlash(clean))
 	if !withinFilesystemRoot(root, target) {
 		return "", "", fmt.Errorf("tar entry %q escapes plugin root", name)
 	}
-	return target, filepath.ToSlash(name), nil
+	return target, filepath.ToSlash(clean), nil
 }
 
 func ensureRealDirectory(root, dir string) error {

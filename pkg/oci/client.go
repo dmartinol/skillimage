@@ -56,13 +56,14 @@ type PullOptions struct {
 
 // LocalImage holds metadata for an image stored in the local OCI layout.
 type LocalImage struct {
-	Name    string
-	Version string
-	Tag     string
-	Digest  string
-	Status  string
-	Created string
-	Type    string
+	Name         string
+	Version      string
+	Tag          string
+	Digest       string
+	Status       string
+	Created      string
+	Type         string
+	ArtifactType string
 }
 
 // PromoteOptions configures the Promote operation.
