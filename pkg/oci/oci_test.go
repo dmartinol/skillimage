@@ -320,6 +320,53 @@ func TestPullWithUnpackPlugin(t *testing.T) {
 	}
 }
 
+func TestBuildPluginExcludesVCSMetadata(t *testing.T) {
+	pluginDir := t.TempDir()
+	writeTestPlugin(t, pluginDir)
+	metadata := map[string]string{
+		".git":                                "gitdir: ../.git/worktrees/test-plugin\n",
+		"skills/test-skill/.git/objects/pack": "git object history",
+		".hg/store/metadata":                  "mercurial metadata",
+		".svn/entries":                        "subversion metadata",
+	}
+	for name, contents := range metadata {
+		path := filepath.Join(pluginDir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("create parent for %s: %v", name, err)
+		}
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	client, err := oci.NewClient(t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	if _, err := client.BuildPlugin(context.Background(), pluginDir, "test/test-plugin:1.2.3"); err != nil {
+		t.Fatalf("BuildPlugin: %v", err)
+	}
+
+	outputDir := t.TempDir()
+	if err := client.Unpack(context.Background(), "test/test-plugin:1.2.3", outputDir); err != nil {
+		t.Fatalf("Unpack: %v", err)
+	}
+	unpackedDir := filepath.Join(outputDir, "test-plugin")
+	for _, relPath := range []string{
+		".git",
+		"skills/test-skill/.git",
+		".hg",
+		".svn",
+	} {
+		if _, err := os.Lstat(filepath.Join(unpackedDir, relPath)); !os.IsNotExist(err) {
+			t.Errorf("VCS metadata %s was included in the plugin layer (stat error: %v)", relPath, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(unpackedDir, ".claude-plugin", "plugin.json")); err != nil {
+		t.Errorf("expected non-VCS dotfiles to remain in the plugin layer: %v", err)
+	}
+}
+
 func newReadOnlyTestRegistry(t *testing.T, storeDir, repository, tag string, manifestDesc ocispec.Descriptor) *httptest.Server {
 	t.Helper()
 	type blob struct {

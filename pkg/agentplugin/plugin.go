@@ -232,6 +232,12 @@ func parseManifest(data []byte) (Manifest, error) {
 func validateTree(root string) (int, error) {
 	count := 0
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if path != root && IsVCSMetadataEntry(filepath.Base(path)) {
+			if entry != nil && entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if walkErr != nil {
 			return walkErr
 		}
@@ -269,6 +275,17 @@ func validateTree(root string) (int, error) {
 		return 0, fmt.Errorf("scanning plugin directory: %w", err)
 	}
 	return count, nil
+}
+
+// IsVCSMetadataEntry reports whether name is a version-control metadata entry
+// that should be excluded from plugin validation and packaging.
+func IsVCSMetadataEntry(name string) bool {
+	switch name {
+	case ".git", ".hg", ".svn":
+		return true
+	default:
+		return false
+	}
 }
 
 func readContainedRegularFile(root, file string) ([]byte, error) {

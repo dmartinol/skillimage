@@ -345,6 +345,12 @@ func createPluginLayer(root string) (*bytes.Buffer, godigest.Digest, error) {
 	var tarBuf bytes.Buffer
 	tw := tar.NewWriter(&tarBuf)
 	err := filepath.WalkDir(root, func(filePath string, entry os.DirEntry, walkErr error) error {
+		if filePath != root && agentplugin.IsVCSMetadataEntry(filepath.Base(filePath)) {
+			if entry != nil && entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if walkErr != nil {
 			return walkErr
 		}
