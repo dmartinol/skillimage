@@ -5,9 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/redhat-et/skillimage/pkg/agentplugin"
 	"github.com/redhat-et/skillimage/pkg/oci"
 	"github.com/redhat-et/skillimage/pkg/source"
 	"github.com/spf13/cobra"
@@ -80,46 +78,20 @@ func runBuildPlugin(cmd *cobra.Command, dir, imageRef, tag, mediaType string) er
 	if err != nil {
 		return err
 	}
-	if profile != oci.MediaTypeStandard {
-		return fmt.Errorf("agent plugin packages require standard OCI media types")
-	}
-
-	info, err := agentplugin.ValidateDir(dir)
-	if err != nil {
-		return fmt.Errorf("validating Agent Plugin: %w", err)
-	}
-	if imageRef == "" {
-		if tag == "" {
-			tag = info.Manifest.Version
-		}
-		if tag == "" {
-			return fmt.Errorf("plugin.json has no version; provide a plugin-image-ref or --tag")
-		}
-		imageRef = info.Manifest.Name + ":" + tag
-	} else if tag != "" {
-		imageRef, err = withImageTag(imageRef, tag)
-		if err != nil {
-			return err
-		}
-	} else if !strings.Contains(imageRef, "@") && !hasImageTag(imageRef) {
-		if info.Manifest.Version == "" {
-			return fmt.Errorf("plugin.json has no version; provide --tag or a tagged plugin-image-ref")
-		}
-		imageRef, err = withImageTag(imageRef, info.Manifest.Version)
-		if err != nil {
-			return err
-		}
-	}
 
 	client, err := defaultClient()
 	if err != nil {
 		return err
 	}
-	desc, err := client.BuildPlugin(cmd.Context(), dir, imageRef)
+	result, err := client.BuildPlugin(cmd.Context(), dir, oci.PluginBuildOptions{
+		ImageRef:  imageRef,
+		Tag:       tag,
+		MediaType: profile,
+	})
 	if err != nil {
 		return fmt.Errorf("building Agent Plugin: %w", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Built plugin %s\nDigest: %s\n", imageRef, desc.Digest)
+	fmt.Fprintf(cmd.OutOrStdout(), "Built plugin %s\nDigest: %s\n", result.ImageRef, result.Descriptor.Digest)
 	return nil
 }
 
@@ -132,22 +104,6 @@ func hasPluginManifest(dir string) (bool, error) {
 		return false, nil
 	}
 	return false, fmt.Errorf("checking for plugin.json: %w", err)
-}
-
-func hasImageTag(ref string) bool {
-	return strings.LastIndex(ref, ":") > strings.LastIndex(ref, "/")
-}
-
-func withImageTag(ref, tag string) (string, error) {
-	if strings.Contains(ref, "@") {
-		return "", fmt.Errorf("--tag cannot override a digest reference")
-	}
-	colon := strings.LastIndex(ref, ":")
-	slash := strings.LastIndex(ref, "/")
-	if colon > slash {
-		return ref[:colon+1] + tag, nil
-	}
-	return ref + ":" + tag, nil
 }
 
 func runBuildRemote(cmd *cobra.Command, rawURL, imageRef, tag, mediaType, ref, filter string) error {

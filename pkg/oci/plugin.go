@@ -62,20 +62,29 @@ type PluginInspectResult struct {
 }
 
 // BuildPlugin validates and packages a complete Agent Plugins directory into
-// an OCI image stored locally under ref. The image contains one complete
-// plugin filesystem layer, including dotfiles and executable files.
-func (c *Client) BuildPlugin(ctx context.Context, pluginDir, ref string) (ocispec.Descriptor, error) {
-	if strings.TrimSpace(ref) == "" {
-		return ocispec.Descriptor{}, fmt.Errorf("an OCI reference is required")
+// an OCI image in the local store. The image contains one complete plugin
+// filesystem layer, including dotfiles and executable files.
+func (c *Client) BuildPlugin(ctx context.Context, pluginDir string, opts PluginBuildOptions) (PluginBuildResult, error) {
+	profile, err := ParseMediaTypeProfile(string(opts.MediaType))
+	if err != nil {
+		return PluginBuildResult{}, err
 	}
+	if profile != MediaTypeStandard {
+		return PluginBuildResult{}, fmt.Errorf("agent plugin packages require standard OCI media types")
+	}
+
 	info, err := agentplugin.ValidateDir(pluginDir)
 	if err != nil {
-		return ocispec.Descriptor{}, err
+		return PluginBuildResult{}, err
+	}
+	ref, err := resolvePluginImageRef(info.Manifest, opts)
+	if err != nil {
+		return PluginBuildResult{}, err
 	}
 
 	layerBuf, diffID, err := createPluginLayer(info.Root)
 	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("creating plugin layer: %w", err)
+		return PluginBuildResult{}, fmt.Errorf("creating plugin layer: %w", err)
 	}
 	layerBytes := layerBuf.Bytes()
 	layerDesc := ocispec.Descriptor{
@@ -84,12 +93,12 @@ func (c *Client) BuildPlugin(ctx context.Context, pluginDir, ref string) (ocispe
 		Size:      int64(len(layerBytes)),
 	}
 	if err := c.store.Push(ctx, layerDesc, bytes.NewReader(layerBytes)); err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
-		return ocispec.Descriptor{}, fmt.Errorf("pushing plugin layer: %w", err)
+		return PluginBuildResult{}, fmt.Errorf("pushing plugin layer: %w", err)
 	}
 
 	configBytes, err := buildImageConfig(diffID)
 	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("building plugin image config: %w", err)
+		return PluginBuildResult{}, fmt.Errorf("building plugin image config: %w", err)
 	}
 	configDesc := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageConfig,
@@ -97,14 +106,61 @@ func (c *Client) BuildPlugin(ctx context.Context, pluginDir, ref string) (ocispe
 		Size:      int64(len(configBytes)),
 	}
 	if err := c.store.Push(ctx, configDesc, bytes.NewReader(configBytes)); err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
-		return ocispec.Descriptor{}, fmt.Errorf("pushing plugin config: %w", err)
+		return PluginBuildResult{}, fmt.Errorf("pushing plugin config: %w", err)
 	}
 
 	annotations, err := pluginAnnotations(info)
 	if err != nil {
-		return ocispec.Descriptor{}, err
+		return PluginBuildResult{}, err
 	}
-	return c.buildAndTagManifest(ctx, configDesc, []ocispec.Descriptor{layerDesc}, annotations, "", ref)
+	desc, err := c.buildAndTagManifest(ctx, configDesc, []ocispec.Descriptor{layerDesc}, annotations, "", ref)
+	if err != nil {
+		return PluginBuildResult{}, err
+	}
+	return PluginBuildResult{ImageRef: ref, Descriptor: desc}, nil
+}
+
+func resolvePluginImageRef(manifest agentplugin.Manifest, opts PluginBuildOptions) (string, error) {
+	ref := opts.ImageRef
+	if ref != "" && strings.TrimSpace(ref) == "" {
+		return "", fmt.Errorf("an OCI reference is required")
+	}
+	if ref == "" {
+		tag := opts.Tag
+		if tag == "" {
+			tag = manifest.Version
+		}
+		if tag == "" {
+			return "", fmt.Errorf("plugin.json has no version; provide a plugin-image-ref or --tag")
+		}
+		return manifest.Name + ":" + tag, nil
+	}
+	if opts.Tag != "" {
+		return withImageTag(ref, opts.Tag)
+	}
+	if strings.Contains(ref, "@") || hasImageTag(ref) {
+		return ref, nil
+	}
+	if manifest.Version == "" {
+		return "", fmt.Errorf("plugin.json has no version; provide --tag or a tagged plugin-image-ref")
+	}
+	return withImageTag(ref, manifest.Version)
+}
+
+func hasImageTag(ref string) bool {
+	return strings.LastIndex(ref, ":") > strings.LastIndex(ref, "/")
+}
+
+func withImageTag(ref, tag string) (string, error) {
+	if strings.Contains(ref, "@") {
+		return "", fmt.Errorf("--tag cannot override a digest reference")
+	}
+	colon := strings.LastIndex(ref, ":")
+	slash := strings.LastIndex(ref, "/")
+	if colon > slash {
+		return ref[:colon+1] + tag, nil
+	}
+	return ref + ":" + tag, nil
 }
 
 // InspectPlugin retrieves plugin metadata from a local image.

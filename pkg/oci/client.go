@@ -1,6 +1,7 @@
 package oci
 
 import (
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/oci"
 
 	"github.com/redhat-et/skillimage/pkg/skillcard"
@@ -35,6 +36,27 @@ type BuildOptions struct {
 	// SkillCard is a pre-built SkillCard to use instead of reading skill.yaml
 	// from disk. When non-nil, Build skips the file read/parse/validate steps.
 	SkillCard *skillcard.SkillCard
+}
+
+// PluginBuildOptions configures the BuildPlugin operation.
+type PluginBuildOptions struct {
+	// ImageRef, if set, overrides the repository name from plugin.json. If it
+	// is untagged, is not a digest reference, and Tag is empty, the manifest
+	// version is used as the tag.
+	ImageRef string
+	// Tag overrides the manifest version or the tag in ImageRef. It cannot be
+	// used with a digest reference.
+	Tag string
+	// MediaType selects the media type profile. Agent Plugin images currently
+	// support only standard OCI media types; empty defaults to standard.
+	MediaType MediaTypeProfile
+}
+
+// PluginBuildResult contains the resolved image reference and manifest
+// descriptor produced by BuildPlugin.
+type PluginBuildResult struct {
+	ImageRef   string
+	Descriptor ocispec.Descriptor
 }
 
 // PushOptions configures the Push operation.

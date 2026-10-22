@@ -93,7 +93,7 @@ func TestBuildAndListLocal(t *testing.T) {
 
 	pluginDir := t.TempDir()
 	writeTestPlugin(t, pluginDir)
-	if _, err := client.BuildPlugin(ctx, pluginDir, "test/test-plugin:1.2.3"); err != nil {
+	if _, err := client.BuildPlugin(ctx, pluginDir, oci.PluginBuildOptions{ImageRef: "test/test-plugin:1.2.3"}); err != nil {
 		t.Fatalf("BuildPlugin: %v", err)
 	}
 
@@ -132,6 +132,30 @@ func TestBuildAndListLocal(t *testing.T) {
 	}
 	if pluginImage.Version != "1.2.3" || pluginImage.Tag != "1.2.3" {
 		t.Errorf("plugin image version/tag = %q/%q, want 1.2.3/1.2.3", pluginImage.Version, pluginImage.Tag)
+	}
+}
+
+func TestBuildPluginDefaultsReferenceFromManifest(t *testing.T) {
+	pluginDir := t.TempDir()
+	writeTestPlugin(t, pluginDir)
+
+	client, err := oci.NewClient(t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	result, err := client.BuildPlugin(context.Background(), pluginDir, oci.PluginBuildOptions{})
+	if err != nil {
+		t.Fatalf("BuildPlugin: %v", err)
+	}
+	if result.ImageRef != "test-plugin:1.2.3" {
+		t.Errorf("BuildPlugin image ref = %q, want %q", result.ImageRef, "test-plugin:1.2.3")
+	}
+	if result.Descriptor.Digest.String() == "" {
+		t.Fatal("BuildPlugin returned an empty descriptor digest")
+	}
+	if _, err := client.Inspect(context.Background(), result.ImageRef); err != nil {
+		t.Fatalf("Inspect built plugin at resolved ref %q: %v", result.ImageRef, err)
 	}
 }
 
@@ -252,7 +276,7 @@ func TestUnpack(t *testing.T) {
 
 	pluginDir := t.TempDir()
 	writeTestPlugin(t, pluginDir)
-	if _, err := client.BuildPlugin(ctx, pluginDir, "test/test-plugin:1.2.3"); err != nil {
+	if _, err := client.BuildPlugin(ctx, pluginDir, oci.PluginBuildOptions{ImageRef: "test/test-plugin:1.2.3"}); err != nil {
 		t.Fatalf("BuildPlugin: %v", err)
 	}
 	if err := client.Unpack(ctx, "test/test-plugin:1.2.3", outputDir); err != nil {
@@ -279,12 +303,12 @@ func TestPullWithUnpackPlugin(t *testing.T) {
 		t.Fatalf("NewClient (source): %v", err)
 	}
 	ctx := context.Background()
-	manifestDesc, err := sourceClient.BuildPlugin(ctx, pluginDir, "test/test-plugin:1.2.3")
+	manifestDesc, err := sourceClient.BuildPlugin(ctx, pluginDir, oci.PluginBuildOptions{ImageRef: "test/test-plugin:1.2.3"})
 	if err != nil {
 		t.Fatalf("BuildPlugin: %v", err)
 	}
 
-	registry := newReadOnlyTestRegistry(t, sourceStoreDir, "test/test-plugin", "1.2.3", manifestDesc)
+	registry := newReadOnlyTestRegistry(t, sourceStoreDir, "test/test-plugin", "1.2.3", manifestDesc.Descriptor)
 	remoteRef := strings.TrimPrefix(registry.URL, "https://") + "/test/test-plugin:1.2.3"
 	remoteInspect, err := sourceClient.InspectRemote(ctx, remoteRef, oci.InspectOptions{SkipTLSVerify: true})
 	if err != nil {
@@ -343,7 +367,7 @@ func TestBuildPluginExcludesVCSMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	if _, err := client.BuildPlugin(context.Background(), pluginDir, "test/test-plugin:1.2.3"); err != nil {
+	if _, err := client.BuildPlugin(context.Background(), pluginDir, oci.PluginBuildOptions{ImageRef: "test/test-plugin:1.2.3"}); err != nil {
 		t.Fatalf("BuildPlugin: %v", err)
 	}
 
@@ -482,7 +506,7 @@ func TestInspect(t *testing.T) {
 
 	pluginDir := t.TempDir()
 	writeTestPlugin(t, pluginDir)
-	if _, err := client.BuildPlugin(ctx, pluginDir, "test/test-plugin:1.2.3"); err != nil {
+	if _, err := client.BuildPlugin(ctx, pluginDir, oci.PluginBuildOptions{ImageRef: "test/test-plugin:1.2.3"}); err != nil {
 		t.Fatalf("BuildPlugin: %v", err)
 	}
 	pluginResult, err := client.Inspect(ctx, "test/test-plugin:1.2.3")

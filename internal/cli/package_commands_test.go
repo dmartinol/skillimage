@@ -61,6 +61,27 @@ func TestPluginBuildInspectAndListCommands(t *testing.T) {
 	}
 }
 
+func TestPluginBuildPassesTagAndMediaTypeToOCI(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	pluginDir, err := filepath.Abs(filepath.Join("..", "..", "examples", "plugins", "incident-triage"))
+	if err != nil {
+		t.Fatalf("resolve plugin fixture: %v", err)
+	}
+
+	buildOutput, err := executeRootForTest(t, "build", pluginDir, "--tag", "2.0.0")
+	if err != nil {
+		t.Fatalf("build plugin with tag override: %v", err)
+	}
+	if !strings.Contains(buildOutput, "Built plugin incident-triage:2.0.0") {
+		t.Errorf("build output does not reflect the tag override: %s", buildOutput)
+	}
+
+	_, err = executeRootForTest(t, "build", pluginDir, "--media-type", "redhat")
+	if err == nil || !strings.Contains(err.Error(), "agent plugin packages require standard OCI media types") {
+		t.Fatalf("build plugin with redhat media type error = %v, want standard media type restriction", err)
+	}
+}
+
 func executeRootForTest(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	cmd := NewRootCmd("test")
