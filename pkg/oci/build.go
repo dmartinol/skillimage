@@ -169,7 +169,7 @@ func (c *Client) imageFromManifest(ctx context.Context, tag string, desc ocispec
 		return nil, err
 	}
 	defer func() { _ = rc.Close() }()
-	manifestBytes, err := io.ReadAll(rc)
+	manifestBytes, err := readManifestBytes(rc)
 	if err != nil {
 		return nil, err
 	}

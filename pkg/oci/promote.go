@@ -56,7 +56,7 @@ func promote(ctx context.Context, store promotableStore, ref string, to lifecycl
 		return fmt.Errorf("fetching manifest for %s: %w", ref, err)
 	}
 	defer func() { _ = rc.Close() }()
-	manifestBytes, err := io.ReadAll(rc)
+	manifestBytes, err := readManifestBytes(rc)
 	if err != nil {
 		return fmt.Errorf("reading manifest for %s: %w", ref, err)
 	}

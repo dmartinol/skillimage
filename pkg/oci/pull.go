@@ -65,7 +65,7 @@ func (c *Client) UnpackPackage(ctx context.Context, ref, outputDir string) (stri
 		return "", fmt.Errorf("fetching manifest: %w", err)
 	}
 	defer func() { _ = rc.Close() }()
-	manifestBytes, err := io.ReadAll(rc)
+	manifestBytes, err := readManifestBytes(rc)
 	if err != nil {
 		return "", fmt.Errorf("reading manifest: %w", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -143,7 +142,7 @@ func (c *Client) extractCollectionYAML(ctx context.Context, ref string) (*collec
 	}
 	defer func() { _ = rc.Close() }()
 
-	manifestBytes, err := io.ReadAll(rc)
+	manifestBytes, err := readManifestBytes(rc)
 	if err != nil {
 		return nil, fmt.Errorf("reading manifest: %w", err)
 	}

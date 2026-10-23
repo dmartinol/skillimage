@@ -43,7 +43,7 @@ func inspect(ctx context.Context, store inspectableStore, ref string) (*InspectR
 	}
 	defer func() { _ = rc.Close() }()
 
-	manifestBytes, err := io.ReadAll(rc)
+	manifestBytes, err := readManifestBytes(rc)
 	if err != nil {
 		return nil, fmt.Errorf("reading manifest: %w", err)
 	}

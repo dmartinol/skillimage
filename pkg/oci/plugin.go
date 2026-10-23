@@ -313,7 +313,7 @@ func readPluginManifest(ctx context.Context, store inspectableStore, ref string)
 		return ocispec.Manifest{}, ocispec.Descriptor{}, fmt.Errorf("fetching plugin manifest: %w", err)
 	}
 	defer func() { _ = rc.Close() }()
-	data, err := io.ReadAll(rc)
+	data, err := readManifestBytes(rc)
 	if err != nil {
 		return ocispec.Manifest{}, ocispec.Descriptor{}, fmt.Errorf("reading plugin manifest: %w", err)
 	}

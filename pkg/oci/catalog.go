@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 
@@ -95,13 +94,9 @@ func FetchManifestAnnotations(ctx context.Context, registryURL, repoName, tag st
 	}
 	defer func() { _ = rc.Close() }()
 
-	const maxManifestSize = 4 << 20 // 4 MiB
-	manifestBytes, err := io.ReadAll(io.LimitReader(rc, maxManifestSize))
+	manifestBytes, err := readManifestBytes(rc)
 	if err != nil {
 		return nil, fmt.Errorf("reading manifest: %w", err)
-	}
-	if int64(len(manifestBytes)) >= maxManifestSize {
-		return nil, fmt.Errorf("manifest exceeds %d bytes", maxManifestSize)
 	}
 
 	var manifest ocispec.Manifest
