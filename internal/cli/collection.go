@@ -75,7 +75,7 @@ func newCollectionPullCmd() *cobra.Command {
 	var tlsVerify bool
 	cmd := &cobra.Command{
 		Use:   "pull <ref>",
-		Short: "Pull a collection and all its skills from a registry",
+		Short: "Fetch a collection and optionally pull its skills from a registry",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCollectionPull(cmd, args[0], outputDir, !tlsVerify)

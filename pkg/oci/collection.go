@@ -88,8 +88,9 @@ func (c *Client) PushCollection(ctx context.Context, ref string, opts PushOption
 	return c.Push(ctx, ref, opts)
 }
 
-// PullCollection fetches a collection artifact from a remote registry,
-// parses the YAML, and pulls each referenced skill image into opts.OutputDir.
+// PullCollection fetches a collection artifact from a remote registry and
+// parses its YAML. It inspects referenced skill manifests remotely when no
+// output directory is set, and pulls their images when extracting them.
 func (c *Client) PullCollection(ctx context.Context, ref string, opts PullOptions) (*collection.SkillCollection, error) {
 	if _, err := c.Pull(ctx, ref, PullOptions{SkipTLSVerify: opts.SkipTLSVerify}); err != nil {
 		return nil, fmt.Errorf("pulling collection artifact: %w", err)
@@ -104,10 +105,15 @@ func (c *Client) PullCollection(ctx context.Context, ref string, opts PullOption
 	// A collection entry that points to an Agent Plugin must not be extracted
 	// into the skill directory layout.
 	for _, skill := range col.Skills {
-		if _, err := c.Pull(ctx, skill.Image, PullOptions{SkipTLSVerify: opts.SkipTLSVerify}); err != nil {
-			return nil, fmt.Errorf("pulling skill %s: %w", skill.Name, err)
+		var image *InspectResult
+		if opts.OutputDir == "" {
+			image, err = c.InspectRemote(ctx, skill.Image, InspectOptions{SkipTLSVerify: opts.SkipTLSVerify})
+		} else {
+			if _, err := c.Pull(ctx, skill.Image, PullOptions{SkipTLSVerify: opts.SkipTLSVerify}); err != nil {
+				return nil, fmt.Errorf("pulling skill %s: %w", skill.Name, err)
+			}
+			image, err = c.Inspect(ctx, skill.Image)
 		}
-		image, err := c.Inspect(ctx, skill.Image)
 		if err != nil {
 			return nil, fmt.Errorf("inspecting skill %s: %w", skill.Name, err)
 		}
